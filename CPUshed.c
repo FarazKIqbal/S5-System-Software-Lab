@@ -1,196 +1,175 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct Process {
-    int pid;
-    int arrival_time;
-    int burst_time;
-    int priority;
-    int waiting_time;
-    int turnaround_time;
-    int remaining_time; // Used for Round Robin
-    int completed; // 0 for not completed, 1 for completed
+struct P {
+    int pid, at, bt, pr, wt, tat, rt, comp;
 };
 
-void calculateWaitingTime(struct Process proc[], int n) {
+void calcWT(struct P p[], int n) {
     for (int i = 0; i < n; i++) {
-        proc[i].waiting_time = proc[i].turnaround_time - proc[i].burst_time;
+        p[i].wt = p[i].tat - p[i].bt;
     }
 }
 
-void calculateTurnaroundTime(struct Process proc[], int n) {
+void calcTAT(struct P p[], int n) {
     for (int i = 0; i < n; i++) {
-        proc[i].turnaround_time = proc[i].burst_time + proc[i].waiting_time;
+        p[i].tat = p[i].bt + p[i].wt;
     }
 }
 
-void fcfs(struct Process proc[], int n) {
-    int total_time = 0;
+void fcfs(struct P p[], int n) {
+    int tt = 0;
 
-    // Sorting processes by arrival time
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n - i - 1; j++) {
-            if (proc[j].arrival_time > proc[j + 1].arrival_time) {
-                struct Process temp = proc[j];
-                proc[j] = proc[j + 1];
-                proc[j + 1] = temp;
+            if (p[j].at > p[j + 1].at) {
+                struct P temp = p[j];
+                p[j] = p[j + 1];
+                p[j + 1] = temp;
             }
         }
     }
 
     for (int i = 0; i < n; i++) {
-        if (total_time < proc[i].arrival_time)
-            total_time = proc[i].arrival_time;
-
-        proc[i].waiting_time = total_time - proc[i].arrival_time;
-        proc[i].turnaround_time = proc[i].waiting_time + proc[i].burst_time;
-        total_time += proc[i].burst_time;
+        if (tt < p[i].at)
+            tt = p[i].at;
+        p[i].wt = tt - p[i].at;
+        p[i].tat = p[i].wt + p[i].bt;
+        tt += p[i].bt;
     }
 
-    calculateWaitingTime(proc, n);
-    calculateTurnaroundTime(proc, n);
+    calcWT(p, n);
+    calcTAT(p, n);
 }
 
-void sjfNonPreemptive(struct Process proc[], int n) {
-    int total_time = 0, completed = 0;
+void sjfNP(struct P p[], int n) {
+    int tt = 0, comp = 0;
 
-    // Sorting based on arrival time to ensure the earliest process is selected first
-    while (completed != n) {
-        int min_index = -1;
-        int min_burst = 1e9;
+    while (comp != n) {
+        int minIdx = -1, minBt = 1e9;
 
-        // Selecting the process with the shortest burst time that has arrived and is not completed
         for (int i = 0; i < n; i++) {
-            if (proc[i].completed == 0 && proc[i].arrival_time <= total_time && proc[i].burst_time < min_burst) {
-                min_burst = proc[i].burst_time;
-                min_index = i;
+            if (p[i].comp == 0 && p[i].at <= tt && p[i].bt < minBt) {
+                minBt = p[i].bt;
+                minIdx = i;
             }
         }
 
-        // If no process has arrived yet, increment time
-        if (min_index == -1) {
-            total_time++;
+        if (minIdx == -1) {
+            tt++;
             continue;
         }
 
-        // Process the selected shortest job
-        proc[min_index].waiting_time = total_time - proc[min_index].arrival_time;
-        proc[min_index].turnaround_time = proc[min_index].waiting_time + proc[min_index].burst_time;
-        proc[min_index].completed = 1;
-        completed++;
-        total_time += proc[min_index].burst_time;
+        p[minIdx].wt = tt - p[minIdx].at;
+        p[minIdx].tat = p[minIdx].wt + p[minIdx].bt;
+        p[minIdx].comp = 1;
+        comp++;
+        tt += p[minIdx].bt;
     }
 
-    calculateWaitingTime(proc, n);
-    calculateTurnaroundTime(proc, n);
+    calcWT(p, n);
+    calcTAT(p, n);
 }
 
-void roundRobin(struct Process proc[], int n, int quantum) {
-    int total_time = 0, completed = 0;
+void rr(struct P p[], int n, int q) {
+    int tt = 0, comp = 0;
 
-    while (completed != n) {
+    while (comp != n) {
         int done = 1;
         for (int i = 0; i < n; i++) {
-            if (proc[i].remaining_time > 0) {
+            if (p[i].rt > 0) {
                 done = 0;
-                if (proc[i].remaining_time > quantum) {
-                    total_time += quantum;
-                    proc[i].remaining_time -= quantum;
+                if (p[i].rt > q) {
+                    tt += q;
+                    p[i].rt -= q;
                 } else {
-                    total_time += proc[i].remaining_time;
-                    proc[i].waiting_time = total_time - proc[i].burst_time - proc[i].arrival_time;
-                    proc[i].remaining_time = 0;
-                    completed++;
+                    tt += p[i].rt;
+                    p[i].wt = tt - p[i].bt - p[i].at;
+                    p[i].rt = 0;
+                    comp++;
                 }
             }
         }
         if (done) break;
     }
 
-    calculateTurnaroundTime(proc, n);
+    calcTAT(p, n);
 }
 
-void priorityScheduling(struct Process proc[], int n) {
-    int total_time = 0, completed = 0;
+void priority(struct P p[], int n) {
+    int tt = 0, comp = 0;
 
-    while (completed != n) {
-        int min_index = -1;
-        int min_priority = 1e9;
+    while (comp != n) {
+        int minIdx = -1, minPr = 1e9;
 
         for (int i = 0; i < n; i++) {
-            if (proc[i].completed == 0 && proc[i].arrival_time <= total_time && proc[i].priority < min_priority) {
-                min_priority = proc[i].priority;
-                min_index = i;
+            if (p[i].comp == 0 && p[i].at <= tt && p[i].pr < minPr) {
+                minPr = p[i].pr;
+                minIdx = i;
             }
         }
 
-        if (min_index == -1) {
-            total_time++;
+        if (minIdx == -1) {
+            tt++;
             continue;
         }
 
-        proc[min_index].waiting_time = total_time - proc[min_index].arrival_time;
-        proc[min_index].turnaround_time = proc[min_index].waiting_time + proc[min_index].burst_time;
-        proc[min_index].completed = 1;
-        completed++;
-        total_time += proc[min_index].burst_time;
+        p[minIdx].wt = tt - p[minIdx].at;
+        p[minIdx].tat = p[minIdx].wt + p[minIdx].bt;
+        p[minIdx].comp = 1;
+        comp++;
+        tt += p[minIdx].bt;
     }
 
-    calculateWaitingTime(proc, n);
-    calculateTurnaroundTime(proc, n);
+    calcWT(p, n);
+    calcTAT(p, n);
 }
 
-void printResults(struct Process proc[], int n) {
-    printf("\nPID\tArrival Time\tBurst Time\tPriority\tWaiting Time\tTurnaround Time\n");
+void printRes(struct P p[], int n) {
+    printf("\nPID\tAT\tBT\tPR\tWT\tTAT\n");
     for (int i = 0; i < n; i++) {
-        printf("%d\t%d\t\t%d\t\t%d\t\t%d\t\t%d\n",
-               proc[i].pid, proc[i].arrival_time, proc[i].burst_time,
-               proc[i].priority, proc[i].waiting_time, proc[i].turnaround_time);
+        printf("%d\t%d\t%d\t%d\t%d\t%d\n",
+               p[i].pid, p[i].at, p[i].bt, p[i].pr, p[i].wt, p[i].tat);
     }
 }
 
 int main() {
-    int n, choice, quantum;
-    printf("Enter the number of processes: ");
+    int n, ch, q;
+    printf("Enter # of processes: ");
     scanf("%d", &n);
 
-    struct Process proc[n];
+    struct P p[n];
     for (int i = 0; i < n; i++) {
-        printf("Enter arrival time, burst time, and priority for process %d: ", i + 1);
-        scanf("%d %d %d", &proc[i].arrival_time, &proc[i].burst_time, &proc[i].priority);
-        proc[i].pid = i + 1;
-        proc[i].remaining_time = proc[i].burst_time;
-        proc[i].completed = 0;
+        printf("Enter AT, BT, PR for process %d: ", i + 1);
+        scanf("%d %d %d", &p[i].at, &p[i].bt, &p[i].pr);
+        p[i].pid = i + 1;
+        p[i].rt = p[i].bt;
+        p[i].comp = 0;
     }
 
-    printf("Choose the scheduling algorithm:\n");
-    printf("1. FCFS\n");
-    printf("2. SJF (Non-Preemptive)\n");
-    printf("3. Round Robin\n");
-    printf("4. Priority Scheduling\n");
-    printf("Enter your choice: ");
-    scanf("%d", &choice);
+    printf("Choose algorithm:\n1. FCFS\n2. SJF (NP)\n3. RR\n4. Priority\nEnter choice: ");
+    scanf("%d", &ch);
 
-    switch (choice) {
+    switch (ch) {
         case 1:
-            fcfs(proc, n);
+            fcfs(p, n);
             break;
         case 2:
-            sjfNonPreemptive(proc, n);
+            sjfNP(p, n);
             break;
         case 3:
-            printf("Enter the time quantum: ");
-            scanf("%d", &quantum);
-            roundRobin(proc, n, quantum);
+            printf("Enter quantum: ");
+            scanf("%d", &q);
+            rr(p, n, q);
             break;
         case 4:
-            priorityScheduling(proc, n);
+            priority(p, n);
             break;
         default:
             printf("Invalid choice.\n");
             exit(0);
     }
 
-    printResults(proc, n);
+    printRes(p, n);
     return 0;
 }
