@@ -86,7 +86,10 @@ void FIFO(int pages[], int n) {
 
         displayFrames();
     }
-
+    
+    for (int i = 0; i < MAX_FRAMES; i++) {
+            frames[i]=-1;
+    }
     printf("Total Page Faults: %d\n", page_faults);
     printf("Hit Count: %d\n", hitCount);
     printf("Miss Count: %d\n", missCount);
@@ -122,8 +125,11 @@ void LFU(int pages[], int n) {
         }
 
         displayFrames();
+        
     }
-
+    for (int i = 0; i < MAX_FRAMES; i++) {
+            frames[i]=-1;
+    }
     printf("Total Page Faults: %d\n", page_faults);
     printf("Hit Count: %d\n", hitCount);
     printf("Miss Count: %d\n", missCount);
@@ -171,8 +177,11 @@ void LRU(int pages[], int n) {
         }
 
         displayFrames();
+        
     }
-
+    for (int i = 0; i < MAX_FRAMES; i++) {
+            frames[i]=-1;
+    }
     printf("Hit Count: %d\n", hitCount);
     printf("Miss Count: %d\n", missCount);
     printf("\nHit Ratio = %f", (float)hitCount / (float)(hitCount + missCount));
